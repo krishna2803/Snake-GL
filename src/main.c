@@ -7,12 +7,12 @@
 #include <stdbool.h>
 
 #include <glad/glad.h>
-#include <GLFW/glfw3.h>
+#include "GLFW/glfw3.h"
 
-#include <cglm/cglm.h>
+#include "cglm/cglm.h"
 
-const uint8_t SIZE = 10; // size of the grid
-const uint8_t FPS  = 10; // keep this low
+const uint8_t SIZE = 16; // size of the grid
+const uint8_t FPS  = 8; // keep this low
 const uint16_t width  = 480; // window width (== window height )
 const uint16_t height = width;
 
@@ -289,7 +289,7 @@ void main(){ gl_FragColor = vec4(u_color, 1.0);}\n";
         }
         
         if (glfwGetKey(window, GLFW_KEY_D)|| glfwGetKey(window, GLFW_KEY_RIGHT)) if (!dx) { dx= 1; dy= 0; }
-        if (glfwGetKey(window, GLFW_KEY_A)|| glfwGetKey(window, GLFW_KEY_LEFT))  if (!dx) { dx=-1; dy= 0; }
+        if (glfwGetKey(window, GLFW_KEY_A)|| glfwGetKey(window, GLFW_KEY_LEFT))  if (!dx && dy) { dx=-1; dy= 0; }
         if (glfwGetKey(window, GLFW_KEY_W)|| glfwGetKey(window, GLFW_KEY_UP))    if (!dy) { dx= 0; dy=-1; }
         if (glfwGetKey(window, GLFW_KEY_S)|| glfwGetKey(window, GLFW_KEY_DOWN))  if (!dy) { dx= 0; dy= 1; }
 
