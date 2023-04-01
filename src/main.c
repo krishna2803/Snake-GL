@@ -6,13 +6,13 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include <glad/glad.h>
+#include "glad/glad.h"
 #include "GLFW/glfw3.h"
 
 #include "cglm/cglm.h"
 
 const uint8_t SIZE = 16; // size of the grid
-const uint8_t FPS  = 8; // keep this low
+const uint8_t FPS  = 8;  // keep this low
 const uint16_t width  = 480; // window width (== window height )
 const uint16_t height = width;
 
@@ -44,7 +44,7 @@ int update_snake(char grid[SIZE][SIZE], Snake *head, int dx, int dy) {
     grid[head->x][head->y] = 2;
 
     Snake *ptr = head->next;
-    while (ptr) {
+    while (1) {
         grid[px][py] = 3;
         int ppx = ptr->x;
         int ppy = ptr->y;
@@ -52,16 +52,14 @@ int update_snake(char grid[SIZE][SIZE], Snake *head, int dx, int dy) {
         ptr->y = py;
         px = ppx;
         py = ppy;
-        ptr = ptr->next;
+        if (!ptr->next) break;
+        else ptr = ptr->next;
     }
     if (apple) {
-        Snake *tail = head->next;
-        while (tail->next)
-            tail = tail->next;
-        tail->next = malloc(sizeof(Snake));
-        tail->next->x = px;
-        tail->next->y = py;
-        tail->next->next = NULL;
+        ptr->next = malloc(sizeof(Snake));
+        ptr->next->x = px;
+        ptr->next->y = py;
+        ptr->next->next = NULL;
 
         int ax = px, ay = py;
         while (grid[ax][ay] != 0) {
@@ -99,14 +97,12 @@ int main(int argc, char **argv) {
     // add 3 units to head
     Snake *snek = &head;
     for (int i=0; i<3; i++) {
-        if (!snek->next) {
-            snek->next = malloc(sizeof(Snake));
-            snek->next->x = snek->x-1;
-            snek->next->y = snek->y;
-            grid[snek->x-1][snek->y] = 2;
-            snek->next->next = NULL;
-            snek = snek->next;
-        }
+        snek->next = malloc(sizeof(Snake));
+        snek->next->x = snek->x-1;
+        snek->next->y = snek->y;
+        grid[snek->x-1][snek->y] = 2;
+        snek->next->next = NULL;
+        snek = snek->next;
     }
 
     int ax, ay = head.y;
@@ -124,7 +120,6 @@ int main(int argc, char **argv) {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    glfwWindowHint(GLFW_SAMPLES, 4);
 
     // glfwWindowHint(GLFW_DECORATED, false);
     glfwWindowHint(GLFW_RESIZABLE, false);
@@ -173,18 +168,15 @@ int main(int argc, char **argv) {
 
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 8, NULL);
     glEnableVertexAttribArray(0);
-
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindVertexArray(0);
     
     const char *vertex_src = "#version 460 core\n\
-    layout(location=0) in vec2 a_pos;\n\
-uniform mat3 u_transform;\n\
-void main() { gl_Position = vec4(u_transform * vec3(a_pos, 1.0), 1.0); }\n";
+    layout(location=0) in vec2 a_pos;\
+uniform mat3 u_transform;\
+void main() { gl_Position = vec4(u_transform * vec3(a_pos, 1.0), 1.0); }";
 
     const char *fragment_src = "#version 460 core\n\
-    uniform vec3 u_color;\n\
-void main(){ gl_FragColor = vec4(u_color, 1.0);}\n";
+    uniform vec3 u_color;\
+void main(){ gl_FragColor = vec4(u_color, 1.0);}";
 
     unsigned int vs, fs, program;
     vs = glCreateShader(GL_VERTEX_SHADER);
@@ -209,7 +201,6 @@ void main(){ gl_FragColor = vec4(u_color, 1.0);}\n";
     glDeleteShader(fs);
 
     glUseProgram(program);
-    glBindVertexArray(vao);
     
     float s = 1.8 / SIZE;
 
@@ -217,6 +208,8 @@ void main(){ gl_FragColor = vec4(u_color, 1.0);}\n";
     int dy = 0;
 
     double delta = 1.0 / FPS;
+    
+    mat3 u_transform;
 
     double last = glfwGetTime();
     while (!glfwWindowShouldClose(window)) {
@@ -233,25 +226,27 @@ void main(){ gl_FragColor = vec4(u_color, 1.0);}\n";
         glClearColor(0.2, 0.2, 0.2, 1.0);
         glClear(GL_COLOR_BUFFER_BIT);
 
+        float x, y;
+
+        int loc_transform = glGetUniformLocation(program, "u_transform");
+        int loc_color = glGetUniformLocation(program, "u_color");
+
         for (int i=0; i<SIZE; i++) {
             for (int j=0; j<SIZE; j++) {
                 if (!grid[i][j]) continue;
 
-                float x = (i * 2.0 + 1.0) / SIZE - 1.0;
-                float y = 1.0 - (j * 2.0 + 1.0) / SIZE;
+                x = (i * 2.0 + 1.0) / SIZE - 1.0;
+                y = 1.0 - (j * 2.0 + 1.0) / SIZE;
 
-                mat3 u_transform;
                 glm_translate2d_make(u_transform, (vec2){x, y});
                 glm_scale2d(u_transform, (vec2){s, s});
 
-                int loc = glGetUniformLocation(program, "u_transform");
-                glUniformMatrix3fv(loc, 1, 0, u_transform[0]);
-                loc = glGetUniformLocation(program, "u_color");
+                glUniformMatrix3fv(loc_transform, 1, 0, u_transform[0]);
 
                 if (grid[i][j] == 1)
-                    glUniform3f(loc, 1.0, 0.2, 0.2);
+                    glUniform3f(loc_color, 1.0, 0.2, 0.2);
                 else if (grid[i][j] == 2 || grid[i][j] == 3)
-                    glUniform3f(loc, 0.2, 1.0, 0.2);
+                    glUniform3f(loc_color, 0.2, 1.0, 0.2);
                 glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_BYTE, NULL);
             }
         }
