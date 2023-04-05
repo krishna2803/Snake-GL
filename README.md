@@ -2,9 +2,9 @@
 
 <img src="img/snek.PNG" width=300px height=300px/>
 
-Implementation of the classic snake game in C using modern OpenGL.  
-OpenGL 4.6 recommended although it should work with 3.0+ as well with some minor tweaks in the code.  
-For using in Linux, you'll have to make some more changes.  
+Classic snake game in C using modern OpenGL (with Direct State Access).  
+OpenGL 4.6 recommended. Although it should work with 4.5 as well with some tweaks in the code.  
+Tested on Windows. For using in Linux, you'll have to make some more changes.  
 
 `WASD` or arrow keys to start the game and move the snake  
 `R` to restart in case of a gameover  

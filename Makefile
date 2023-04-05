@@ -12,11 +12,11 @@ MAIN	:= $(SRCDIR)/main.c
 SRCS	:= $(filter-out $(MAIN), $(wildcard $(SRCDIR)/*.c))
 OBJS 	:= $(addprefix $(BINDIR)/, $(addsuffix .o, $(basename $(notdir $(SRCS)))))
 
-run: $(BINDIR)/main.exe
-	.\bin\main.exe
+run: $(BINDIR)/game.exe
+	.\bin\game.exe
 
-$(BINDIR)/main.exe: $(MAIN)
-	$(CC) $(MAIN) $(OBJS) $(CFLAGS) $(IFLAGS) $(LFLAGS) $(LDFLAGS) -o $(BINDIR)/main.exe 
+$(BINDIR)/game.exe: $(MAIN)
+	$(CC) $(MAIN) $(OBJS) $(CFLAGS) $(IFLAGS) $(LFLAGS) $(LDFLAGS) -o $(BINDIR)/game.exe 
 
 $(MAIN): $(OBJS)
 
@@ -25,5 +25,5 @@ $(OBJS): $(SRCS)
 
 .PHONY: clean
 clean:
-	del $(BINDIR) /f /q
+	del /q $(BINDIR)\*.exe $(BINDIR)\*.o
 

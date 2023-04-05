@@ -10,6 +10,7 @@
 #include "GLFW/glfw3.h"
 
 #include "cglm/cglm.h"
+#include "gl_debug.h"
 
 const uint8_t SIZE = 16; // size of the grid
 const uint8_t FPS  = 8;  // keep this low
@@ -120,6 +121,7 @@ int main(int argc, char **argv) {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    glfwWindowHint(GLFW_SAMPLES, GLFW_DONT_CARE);
 
     // glfwWindowHint(GLFW_DECORATED, false);
     glfwWindowHint(GLFW_RESIZABLE, false);
@@ -150,41 +152,48 @@ int main(int argc, char **argv) {
     glViewport(0, 0, width, height);
 
     unsigned int vao;
-    glGenVertexArrays(1, &vao);
-    glBindVertexArray(vao);
+    glCreateVertexArrays(1, &vao);
 
     unsigned int vbo;
     // unit square
-    const float vbo_data[] = { -0.5f, -0.5f, -0.5f, 0.5f, 0.5f,  0.5f, 0.5f, -0.5f };
-    glGenBuffers(1, &vbo);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, 32, vbo_data, GL_STATIC_DRAW);
+    const float vertices[] = { -0.5f, -0.5f, -0.5f, 0.5f, 0.5f, 0.5f, 0.5f, -0.5f };
+    glCreateBuffers(1, &vbo);
+    glNamedBufferStorage(vbo, sizeof(vertices), vertices, 0);
 
     unsigned int ebo;
-    const unsigned char ebo_data[] = { 0, 1, 2, 0, 2, 3 };
-    glGenBuffers(1, &ebo);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, 6, ebo_data, GL_STATIC_DRAW);
+    const unsigned char indices[] = { 0, 1, 2, 2, 3, 0 };
+    glCreateBuffers(1, &ebo);
+    glNamedBufferStorage(ebo, sizeof(indices), indices, 0);
 
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 8, NULL);
-    glEnableVertexAttribArray(0);
+    glVertexArrayVertexBuffer(vao, 0, vbo, 0, 8);
+    glVertexArrayElementBuffer(vao, ebo);
+
+    glEnableVertexArrayAttrib(vao, 0);
+    glVertexArrayAttribFormat(vao, 0, 2, GL_FLOAT, GL_FALSE, 0);
+    glVertexArrayAttribBinding(vao, 0, 0);
     
-    const char *vertex_src = "#version 460 core\n\
+    const char *vertex_src = "\
+    #version 460 core\n\
     layout(location=0) in vec2 a_pos;\
-uniform mat3 u_transform;\
-void main() { gl_Position = vec4(u_transform * vec3(a_pos, 1.0), 1.0); }";
+    uniform mat3 u_transform;\
+    void main() {\
+        gl_Position = vec4(u_transform * vec3(a_pos, 1.0), 1.0);\
+    }";
 
-    const char *fragment_src = "#version 460 core\n\
+    const char *fragment_src = "\
+    #version 460 core\n\
     uniform vec3 u_color;\
-void main(){ gl_FragColor = vec4(u_color, 1.0);}";
+    void main() {\
+        gl_FragColor = vec4(u_color, 1.0);\
+    }";
 
     unsigned int vs, fs, program;
     vs = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vs, 1, (const char**) &vertex_src, NULL);
+    glShaderSource(vs, 1, &vertex_src, NULL);
     glCompileShader(vs);
 
     fs = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fs, 1, (const char**) &fragment_src, NULL);
+    glShaderSource(fs, 1, &fragment_src, NULL);
     glCompileShader(fs);
 
     program = glCreateProgram();
@@ -201,6 +210,7 @@ void main(){ gl_FragColor = vec4(u_color, 1.0);}";
     glDeleteShader(fs);
 
     glUseProgram(program);
+    glBindVertexArray(vao);
     
     float s = 1.8 / SIZE;
 
@@ -210,11 +220,19 @@ void main(){ gl_FragColor = vec4(u_color, 1.0);}";
     double delta = 1.0 / FPS;
     
     mat3 u_transform;
+    
+    int loc_transform = glGetUniformLocation(program, "u_transform");
+    int loc_color = glGetUniformLocation(program, "u_color");
 
     double last = glfwGetTime();
     while (!glfwWindowShouldClose(window)) {
         if (glfwGetKey(window, GLFW_KEY_ESCAPE) || glfwGetKey(window, GLFW_KEY_Q))
             glfwSetWindowShouldClose(window, true);
+        
+        if (glfwGetKey(window, GLFW_KEY_D)|| glfwGetKey(window, GLFW_KEY_RIGHT)) if (!dx) { dx= 1; dy= 0; }
+        if (glfwGetKey(window, GLFW_KEY_A)|| glfwGetKey(window, GLFW_KEY_LEFT))  if (!dx && dy) { dx=-1; dy= 0; }
+        if (glfwGetKey(window, GLFW_KEY_W)|| glfwGetKey(window, GLFW_KEY_UP))    if (!dy) { dx= 0; dy=-1; }
+        if (glfwGetKey(window, GLFW_KEY_S)|| glfwGetKey(window, GLFW_KEY_DOWN))  if (!dy) { dx= 0; dy= 1; }
 
         double now = glfwGetTime();
         if (now - last < delta) {
@@ -227,9 +245,6 @@ void main(){ gl_FragColor = vec4(u_color, 1.0);}";
         glClear(GL_COLOR_BUFFER_BIT);
 
         float x, y;
-
-        int loc_transform = glGetUniformLocation(program, "u_transform");
-        int loc_color = glGetUniformLocation(program, "u_color");
 
         for (int i=0; i<SIZE; i++) {
             for (int j=0; j<SIZE; j++) {
@@ -273,7 +288,7 @@ void main(){ gl_FragColor = vec4(u_color, 1.0);}";
             }
 
             int ax, ay = head.y;
-            while (ay == head.y) {  
+            while (ay == head.y) {
                 ax = rand() % SIZE;
                 ay = rand() % SIZE;
             }
@@ -282,11 +297,6 @@ void main(){ gl_FragColor = vec4(u_color, 1.0);}";
             gameover = false;
             dx = dy = 0;
         }
-        
-        if (glfwGetKey(window, GLFW_KEY_D)|| glfwGetKey(window, GLFW_KEY_RIGHT)) if (!dx) { dx= 1; dy= 0; }
-        if (glfwGetKey(window, GLFW_KEY_A)|| glfwGetKey(window, GLFW_KEY_LEFT))  if (!dx && dy) { dx=-1; dy= 0; }
-        if (glfwGetKey(window, GLFW_KEY_W)|| glfwGetKey(window, GLFW_KEY_UP))    if (!dy) { dx= 0; dy=-1; }
-        if (glfwGetKey(window, GLFW_KEY_S)|| glfwGetKey(window, GLFW_KEY_DOWN))  if (!dy) { dx= 0; dy= 1; }
 
         gameover = !update_snake(grid, &head, dx, dy);
 
